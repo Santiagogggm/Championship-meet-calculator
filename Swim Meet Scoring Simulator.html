@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Swim Meet Scoring Simulator</title>
+  <style>
+    :root{ --bg:#ffffff; --fg:#111111; --card:#ffffff; --muted:#555; --border:#e7e7e7; }
+    [data-theme="dark"]{ --bg:#0b0b0d; --fg:#f4f4f5; --card:#121216; --muted:#b7b7bd; --border:#22222a; }
+    body{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin:0; background:var(--bg); color:var(--fg); }
+    .wrap{ max-width:1100px; margin:28px auto; padding:0 16px 40px; }
+    .card{ border:1px solid var(--border); border-radius:16px; padding:16px; margin:14px 0; background:var(--card); box-shadow:0 1px 0 rgba(0,0,0,0.03); }
+    .header{ display:flex; flex-direction:column; gap:10px; align-items:center; text-align:center; padding:10px 0 2px; }
+    .logos{ display:flex; align-items:center; justify-content:center; gap:18px; flex-wrap:wrap; }
+    .logos img{ height:54px; width:auto; object-fit:contain; }
+    .creators{ display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:0.95rem; }
+    .creators img{ height:26px; width:auto; object-fit:contain; }
+    h1{ margin:0; font-size:1.25rem; letter-spacing:0.2px; }
+    .muted{ color:var(--muted); font-size:0.95rem; line-height:1.35; }
+    .tiny{ font-size:0.9rem; color:var(--muted); }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    button, input, select, textarea{ font:inherit; padding:8px 10px; border-radius:12px; border:1px solid var(--border); background:transparent; color:var(--fg); }
+    button{ cursor:pointer; }
+    button.primary{ background:var(--fg); color:var(--bg); border-color:var(--fg); }
+    table{ width:100%; border-collapse:collapse; }
+    th, td{ padding:10px; border-bottom:1px solid var(--border); }
+    th{ background:rgba(127,127,127,0.07); text-align:left; }
+    td.num, th.num{ text-align:right; }
+    input[type="text"]{ width:200px; text-align:left; }
+    input[type="number"]{ width:90px; text-align:right; }
+    textarea{ width:100%; min-height:110px; resize:vertical; }
+    .pill{ display:inline-block; padding:2px 10px; border:1px solid var(--border); border-radius:999px; margin-right:6px; font-size:0.92rem; color:var(--muted); }
+    .error{ color:#b00020; font-weight:650; }
+    .warn{ color:#b36b00; font-weight:650; }
+    .sectionTitle{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .sectionTitle h2{ margin:0; font-size:1.05rem; }
+    .divider{ height:1px; background:var(--border); margin:10px 0; }
+    .eventTabs{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .eventTabs button{ padding:6px 10px; border-radius:999px; }
+    .eventTabs button.active{ background:rgba(127,127,127,0.15); }
+    .kpi{ display:flex; gap:12px; flex-wrap:wrap; }
+    .kpi .box{ border:1px solid var(--border); border-radius:14px; padding:10px 12px; min-width:170px; }
+    .kpi .box .label{ color:var(--muted); font-size:0.9rem; }
+    .kpi .box .value{ font-size:1.2rem; font-weight:700; margin-top:2px; }
+    code{ background:rgba(127,127,127,0.12); padding:0 6px; border-radius:8px; }
+    .grid2{ display:grid; grid-template-columns: 1fr; gap:12px; }
+    @media (min-width: 860px){ .grid2{ grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="logos" aria-label="Conference logos">
+      <img alt="Big Ten Conference" src="https://commons.wikimedia.org/wiki/Special:FilePath/Big%20Ten%20Conference%20logo.svg">
+      <img alt="Ivy League" src="https://commons.wikimedia.org/wiki/Special:FilePath/Ivy%20league%20simple%20logo.png">
+    </div>
+    <div class="creators" aria-label="Creators">
+      <span class="tiny">Created by</span>
+      <img alt="Michigan" title="Michigan" src="https://commons.wikimedia.org/wiki/Special:FilePath/Michigan%20Wolverines%20Block%20M.png">
+      <span class="tiny">×</span>
+      <img alt="Princeton" title="Princeton" src="https://commons.wikimedia.org/wiki/Special:FilePath/Princeton%20Tigers%20logo.svg">
+    </div>
+    <h1>Swim Meet Scoring Simulator</h1>
+    <div class="muted">
+      For each event, paste exact prelim placings (Team, Place). The tool will <b>auto-fill A/B/C counts</b> and compute
+      <span class="pill">Prelims-as-finals</span> + Expected/Max/Min + Optimized.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sectionTitle">
+      <h2>Settings</h2>
+      <div class="row">
+        <button id="themeBtn" type="button">Toggle black/white</button>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="muted">
+      Scoring (individual, places 1–24): A: <code>32,28,27,26,25,24,23,22</code> •
+      B: <code>20,17,16,15,14,13,12,11</code> •
+      C: <code>9,7,6,5,4,3,2,1</code>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sectionTitle">
+      <h2>Teams (up to 10)</h2>
+      <div class="row">
+        <button id="addTeamBtn" class="primary" type="button">+ Add team</button>
+        <button id="resetTeamsBtn" type="button">Reset teams</button>
+      </div>
+    </div>
+    <div id="err" class="error" style="margin-top:10px;"></div>
+    <div style="overflow-x:auto; margin-top:10px;">
+      <table>
+        <thead><tr><th>Team</th><th class="num">Remove</th></tr></thead>
+        <tbody id="teamsBody"></tbody>
+      </table>
+    </div>
+    <div class="tiny" style="margin-top:8px;">
+      Tip: Team names in your pasted placings should match these exactly (case-insensitive is okay).
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sectionTitle">
+      <h2>Events</h2>
+      <div class="row">
+        <button id="addEventBtn" class="primary" type="button">+ Add event</button>
+        <button id="removeEventBtn" type="button">Remove event</button>
+      </div>
+    </div>
+
+    <div class="eventTabs" id="eventTabs"></div>
+
+    <div class="divider"></div>
+
+    <div class="row" style="justify-content:space-between;">
+      <div class="row">
+        <label for="eventName" class="tiny">Event name:</label>
+        <input id="eventName" type="text" placeholder="e.g., 200 Free" />
+      </div>
+      <div class="row">
+        <button id="calcBtn" class="primary" type="button">Calculate meet totals</button>
+      </div>
+    </div>
+
+    <div id="warn" class="warn" style="margin-top:10px;"></div>
+
+    <div class="grid2" style="margin-top:12px;">
+      <div class="card" style="margin:0;">
+        <div class="sectionTitle">
+          <h2 style="font-size:1rem;">Auto-filled counts by final</h2>
+          <div class="tiny">Derived from the prelim placings</div>
+        </div>
+        <div class="divider"></div>
+        <div style="overflow-x:auto;">
+          <table id="eventTable">
+            <thead><tr><th>Team</th><th class="num">A</th><th class="num">B</th><th class="num">C</th></tr></thead>
+            <tbody id="eventBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin:0;">
+        <div class="sectionTitle">
+          <h2 style="font-size:1rem;">Exact prelim placings</h2>
+          <div class="tiny">Paste: Team, Place (one per scorer)</div>
+        </div>
+        <div class="divider"></div>
+        <div class="tiny muted" style="margin-bottom:8px;">
+          Example:<br/>
+          <code>Michigan, 1</code><br/>
+          <code>Michigan, 6</code><br/>
+          <code>Indiana, 9</code><br/>
+          <code>Ohio State, 17</code><br/>
+          Ties supported: two swimmers tie 3rd → two lines with place 3.
+        </div>
+        <textarea id="prelimText" placeholder="Michigan, 3
+Michigan, 7
+Indiana, 1
+Ohio State, 10"></textarea>
+        <div class="row" style="margin-top:10px; justify-content:flex-end;">
+          <button id="autofillBtn" type="button">Auto-fill A/B/C from placings</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tiny" style="margin-top:10px;">
+      Auto-fill updates the A/B/C table for this event based on place buckets: 1–8 (A), 9–16 (B), 17–24 (C).
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sectionTitle">
+      <h2>Full meet totals</h2>
+      <div class="row">
+        <label class="tiny" for="optTeam">Optimize for team:</label>
+        <select id="optTeam"></select>
+        <button id="optBtn" class="primary" type="button">Optimize team</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="kpi" id="kpis"></div>
+
+    <div class="divider"></div>
+
+    <div class="muted tiny">
+      <span class="pill">Prelims-as-finals</span> = score the pasted placings (place→points for 1–24).<br/>
+      Expected/Max/Min use the auto-filled A/B/C counts (or whatever counts are currently shown for that event).
+    </div>
+
+    <div style="overflow-x:auto; margin-top:12px;">
+      <div id="resultsTable"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const POINTS_A = [32,28,27,26,25,24,23,22];
+  const POINTS_B = [20,17,16,15,14,13,12,11];
+  const POINTS_C = [ 9, 7, 6, 5, 4, 3, 2, 1];
+  const POINTS_1_24 = [...POINTS_A, ...POINTS_B, ...POINTS_C];
+
+  const MAX_TEAMS = 10;
+  const SLOTS_PER_FINAL = 8;
+
+  let teams = ["Michigan", "Indiana", "Ohio State", "Minnesota", "Wisconsin"];
+  let events = []; // [{name, data:{team:{a,b,c}}, prelimText:""}]
+  let activeEventIndex = 0;
+
+  let lastMeetTotals = null;
+  let lastOptimizedTotals = null;
+
+  const teamsBody = document.getElementById("teamsBody");
+  const eventTabs = document.getElementById("eventTabs");
+  const eventBody = document.getElementById("eventBody");
+  const errEl = document.getElementById("err");
+  const warnEl = document.getElementById("warn");
+  const eventNameEl = document.getElementById("eventName");
+  const prelimTextEl = document.getElementById("prelimText");
+  const optTeamEl = document.getElementById("optTeam");
+  const kpisEl = document.getElementById("kpis");
+  const resultsTableEl = document.getElementById("resultsTable");
+  const autofillBtn = document.getElementById("autofillBtn");
+
+  function mean(arr){ return arr.reduce((a,b)=>a+b,0)/arr.length; }
+  function sumTop(arr,k){ return arr.slice(0, Math.min(k, arr.length)).reduce((a,b)=>a+b,0); }
+  function sumBottom(arr,k){
+    k = Math.min(k, arr.length);
+    if(k<=0) return 0;
+    return arr.slice(arr.length-k).reduce((a,b)=>a+b,0);
+  }
+  function clampInt(n){ return Math.max(0, Math.floor(Number.isFinite(n) ? n : 0)); }
+  function fmt(x){
+    const r = Math.round(x*1000)/1000;
+    if (Math.abs(r - Math.round(r)) < 1e-9) return String(Math.round(r));
+    const one = Math.round(r*10)/10;
+    if (Math.abs(r - one) < 1e-9) return one.toFixed(1);
+    return String(r);
+  }
+  function esc(s){ return (s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c])); }
+
+  function ensureEvents(){
+    if(events.length === 0){
+      events = [
+        { name: "Event 1", data: {}, prelimText: "" },
+        { name: "Event 2", data: {}, prelimText: "" }
+      ];
+    }
+    for(const ev of events){
+      for(const t of teams){
+        if(!ev.data[t]) ev.data[t] = { a:0, b:0, c:0 };
+      }
+      for(const key of Object.keys(ev.data)){
+        if(!teams.includes(key)) delete ev.data[key];
+      }
+      if(typeof ev.prelimText !== "string") ev.prelimText = "";
+    }
+    activeEventIndex = Math.min(activeEventIndex, events.length - 1);
+  }
+
+  function renderTeams(){
+    teamsBody.innerHTML = "";
+    teams.forEach((t, i) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><input data-team-index="${i}" type="text" value="${esc(t)}" /></td>
+        <td class="num"><button type="button" data-remove-team="${i}">✕</button></td>
+      `;
+      teamsBody.appendChild(tr);
+    });
+
+    teamsBody.querySelectorAll("input[data-team-index]").forEach(inp => {
+      inp.addEventListener("input", (e) => {
+        const idx = Number(e.target.dataset.teamIndex);
+        const oldName = teams[idx];
+        const proposed = e.target.value.trim() || `Team ${idx+1}`;
+
+        if(teams.some((x, j) => j !== idx && x.toLowerCase() === proposed.toLowerCase())){
+          errEl.textContent = "Team names must be unique.";
+          return;
+        }
+        errEl.textContent = "";
+
+        if(proposed === oldName) return;
+        teams[idx] = proposed;
+
+        for(const ev of events){
+          ev.data[proposed] = ev.data[oldName] || {a:0,b:0,c:0};
+          delete ev.data[oldName];
+        }
+        renderAll();
+      });
+    });
+
+    teamsBody.querySelectorAll("button[data-remove-team]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const idx = Number(e.target.dataset.removeTeam);
+        const removed = teams[idx];
+        teams.splice(idx, 1);
+        for(const ev of events) delete ev.data[removed];
+        renderAll();
+      });
+    });
+  }
+
+  function renderEventTabs(){
+    eventTabs.innerHTML = "";
+    events.forEach((ev, idx) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = (idx === activeEventIndex) ? "active" : "";
+      b.textContent = ev.name || `Event ${idx+1}`;
+      b.addEventListener("click", () => {
+        saveActiveEvent();
+        activeEventIndex = idx;
+        renderEventEditor();
+      });
+      eventTabs.appendChild(b);
+    });
+  }
+
+  function saveActiveEvent(){
+    const nm = eventNameEl.value.trim();
+    if(events[activeEventIndex] && nm) events[activeEventIndex].name = nm;
+    if(events[activeEventIndex]) events[activeEventIndex].prelimText = prelimTextEl.value;
+  }
+
+  function renderEventEditor(){
+    ensureEvents();
+    renderEventTabs();
+    const ev = events[activeEventIndex];
+    eventNameEl.value = ev.name || `Event ${activeEventIndex+1}`;
+    prelimTextEl.value = ev.prelimText || "";
+
+    eventBody.innerHTML = "";
+    for(const t of teams){
+      const v = ev.data[t] || {a:0,b:0,c:0};
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${esc(t)}</td>
+        <td class="num"><input type="number" min="0" step="1" value="${v.a}" data-team="${esc(t)}" data-field="a" /></td>
+        <td class="num"><input type="number" min="0" step="1" value="${v.b}" data-team="${esc(t)}" data-field="b" /></td>
+        <td class="num"><input type="number" min="0" step="1" value="${v.c}" data-team="${esc(t)}" data-field="c" /></td>
+      `;
+      eventBody.appendChild(tr);
+    }
+
+    // Still allow manual tweaks if desired
+    eventBody.querySelectorAll("input[type=number]").forEach(inp => {
+      inp.addEventListener("input", (e) => {
+        warnEl.textContent = "";
+        const team = e.target.dataset.team;
+        const field = e.target.dataset.field;
+        const val = clampInt(Number(e.target.value));
+        e.target.value = String(val);
+        events[activeEventIndex].data[team][field] = val;
+      });
+    });
+
+    prelimTextEl.addEventListener("input", () => {
+      events[activeEventIndex].prelimText = prelimTextEl.value;
+    }, { once:false });
+
+    renderOptTeamSelect();
+  }
+
+  function renderOptTeamSelect(){
+    optTeamEl.innerHTML = "";
+    teams.forEach(t => {
+      const o = document.createElement("option");
+      o.value = t; o.textContent = t;
+      optTeamEl.appendChild(o);
+    });
+  }
+
+  function addTeam(){
+    if(teams.length >= MAX_TEAMS){
+      errEl.textContent = `Max ${MAX_TEAMS} teams.`;
+      return;
+    }
+    errEl.textContent = "";
+    let base = `Team ${teams.length+1}`;
+    let name = base, k = 1;
+    while(teams.some(x => x.toLowerCase() === name.toLowerCase())){
+      k++; name = `${base}-${k}`;
+    }
+    teams.push(name);
+    renderAll();
+  }
+
+  function resetTeams(){
+    teams = ["Michigan", "Indiana", "Ohio State", "Minnesota", "Wisconsin"];
+    renderAll();
+  }
+
+  function addEvent(){
+    saveActiveEvent();
+    events.push({ name: `Event ${events.length+1}`, data: {}, prelimText: "" });
+    activeEventIndex = events.length - 1;
+    renderAll();
+  }
+
+  function removeEvent(){
+    if(events.length <= 1){
+      warnEl.textContent = "You must keep at least one event.";
+      return;
+    }
+    events.splice(activeEventIndex, 1);
+    activeEventIndex = Math.max(0, activeEventIndex - 1);
+    renderAll();
+  }
+
+  function computeTeamEvent(counts){
+    const a = counts.a, b = counts.b, c = counts.c;
+    const exp = a*mean(POINTS_A) + b*mean(POINTS_B) + c*mean(POINTS_C);
+    const max = sumTop(POINTS_A, a) + sumTop(POINTS_B, b) + sumTop(POINTS_C, c);
+    const min = sumBottom(POINTS_A, a) + sumBottom(POINTS_B, b) + sumBottom(POINTS_C, c);
+    return { exp, max, min };
+  }
+
+  function parsePrelimLines(text){
+    const lines = (text || "").split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const entries = [];
+    for(let i=0;i<lines.length;i++){
+      const line = lines[i];
+      let team = "", placeStr = "";
+      if(line.includes(",")){
+        const parts = line.split(",");
+        team = parts.slice(0, -1).join(",").trim();
+        placeStr = parts[parts.length - 1].trim();
+      } else {
+        const parts = line.split(/\s+/);
+        placeStr = parts.pop();
+        team = parts.join(" ").trim();
+      }
+      if(!team) throw new Error(`Prelim line ${i+1}: missing team name.`);
+      const place = Number(placeStr);
+      if(!Number.isInteger(place) || place <= 0) throw new Error(`Prelim line ${i+1}: invalid place "${placeStr}".`);
+      entries.push({ team, place });
+    }
+    return entries;
+  }
+
+  function normalizeTeamName(input){
+    const s = (input || "").trim();
+    if(!s) return null;
+    // match case-insensitively to known teams
+    const hit = teams.find(t => t.toLowerCase() === s.toLowerCase());
+    return hit || s; // keep as-is if not found (still counted separately in prelim scoring)
+  }
+
+  function autofillFromPlacingsForActiveEvent(){
+    warnEl.textContent = "";
+    const ev = events[activeEventIndex];
+    const txt = (ev.prelimText || "").trim();
+    if(!txt){
+      warnEl.textContent = "Paste prelim placings first, then click Auto-fill.";
+      return;
+    }
+
+    let entries = [];
+    try{
+      entries = parsePrelimLines(txt);
+    } catch(e){
+      warnEl.textContent = e.message;
+      return;
+    }
+
+    // reset counts
+    for(const t of teams){
+      ev.data[t] = {a:0,b:0,c:0};
+    }
+
+    // bucket counts
+    for(const e of entries){
+      const team = normalizeTeamName(e.team);
+      if(!team || !ev.data[team]) continue; // ignore unknown teams
+      const p = e.place;
+      if(p >= 1 && p <= 8) ev.data[team].a += 1;
+      else if(p >= 9 && p <= 16) ev.data[team].b += 1;
+      else if(p >= 17 && p <= 24) ev.data[team].c += 1;
+      // else: outside scoring, ignore for A/B/C counts
+    }
+
+    renderEventEditor();
+  }
+
+  function scorePrelims(entries){
+    const teamPoints = {};
+    teams.forEach(t => teamPoints[t] = 0);
+
+    const grouped = new Map();
+    for(const e of entries){
+      const team = normalizeTeamName(e.team);
+      if(!grouped.has(e.place)) grouped.set(e.place, []);
+      grouped.get(e.place).push({ team, place: e.place });
+    }
+    const places = Array.from(grouped.keys()).sort((a,b)=>a-b);
+
+    for(const p of places){
+      const tied = grouped.get(p);
+      const k = tied.length;
+
+      let sum = 0;
+      for(let i=0;i<k;i++){
+        const slotPlace = p + i;
+        const idx = slotPlace - 1;
+        sum += (POINTS_1_24[idx] ?? 0);
+      }
+      const each = sum / k;
+
+      for(const e of tied){
+        if(teamPoints[e.team] == null) continue;
+        teamPoints[e.team] += each;
+      }
+    }
+    return teamPoints;
+  }
+
+  function allocateFinal(finalPoints, countsByTeam, focusTeam){
+    const remaining = {};
+    const pointsByTeam = {};
+    for(const t of Object.keys(countsByTeam)){
+      remaining[t] = Math.max(0, clampInt(countsByTeam[t]));
+      pointsByTeam[t] = 0;
+    }
+    const totalRequested = Object.values(remaining).reduce((s,x)=>s+x,0);
+
+    for(let i=0;i<finalPoints.length;i++){
+      const pts = finalPoints[i];
+
+      let winner = null;
+      if(remaining[focusTeam] > 0){
+        winner = focusTeam;
+      } else {
+        const candidates = Object.keys(remaining).filter(t => remaining[t] > 0);
+        if(candidates.length === 0) break;
+        candidates.sort((a,b) => (remaining[b]-remaining[a]) || a.localeCompare(b));
+        winner = candidates[0];
+      }
+
+      remaining[winner] -= 1;
+      pointsByTeam[winner] += pts;
+    }
+
+    return { pointsByTeam, totalRequested };
+  }
+
+  function optimizedMeetTotals(focusTeam){
+    const totals = {};
+    teams.forEach(t => totals[t] = 0);
+    let warnings = [];
+
+    for(const ev of events){
+      const countsA = {}, countsB = {}, countsC = {};
+      teams.forEach(t => {
+        const v = ev.data[t] || {a:0,b:0,c:0};
+        countsA[t] = v.a; countsB[t] = v.b; countsC[t] = v.c;
+      });
+
+      const aAlloc = allocateFinal(POINTS_A, countsA, focusTeam);
+      const bAlloc = allocateFinal(POINTS_B, countsB, focusTeam);
+      const cAlloc = allocateFinal(POINTS_C, countsC, focusTeam);
+
+      if(aAlloc.totalRequested > SLOTS_PER_FINAL) warnings.push(`${ev.name || "Event"}: A requested ${aAlloc.totalRequested} (>8)`);
+      if(bAlloc.totalRequested > SLOTS_PER_FINAL) warnings.push(`${ev.name || "Event"}: B requested ${bAlloc.totalRequested} (>8)`);
+      if(cAlloc.totalRequested > SLOTS_PER_FINAL) warnings.push(`${ev.name || "Event"}: C requested ${cAlloc.totalRequested} (>8)`);
+
+      teams.forEach(t => {
+        totals[t] += (aAlloc.pointsByTeam[t] || 0) + (bAlloc.pointsByTeam[t] || 0) + (cAlloc.pointsByTeam[t] || 0);
+      });
+    }
+    return { totals, warnings };
+  }
+
+  function calculateMeetTotals(){
+    saveActiveEvent();
+    warnEl.textContent = "";
+    ensureEvents();
+
+    const meet = {};
+    teams.forEach(t => meet[t] = { prelim:0, exp:0, max:0, min:0 });
+
+    let notices = [];
+    let prelimUsedAny = false;
+
+    for(const ev of events){
+      // counts-based totals (auto-filled or manual)
+      for(const t of teams){
+        const v = ev.data[t] || {a:0,b:0,c:0};
+        const s = computeTeamEvent(v);
+        meet[t].exp += s.exp;
+        meet[t].max += s.max;
+        meet[t].min += s.min;
+      }
+
+      // prelim-as-finals
+      const txt = (ev.prelimText || "").trim();
+      if(txt){
+        prelimUsedAny = true;
+        let entries = [];
+        try{
+          entries = parsePrelimLines(txt);
+        } catch(e){
+          notices.push(`${ev.name || "Event"}: ${e.message}`);
+          entries = [];
+        }
+        const scored = scorePrelims(entries);
+        teams.forEach(t => meet[t].prelim += (scored[t] || 0));
+      }
+
+      // oversub notices (counts)
+      const sumA = teams.reduce((s,t)=>s+(ev.data[t]?.a||0),0);
+      const sumB = teams.reduce((s,t)=>s+(ev.data[t]?.b||0),0);
+      const sumC = teams.reduce((s,t)=>s+(ev.data[t]?.c||0),0);
+      if(sumA > SLOTS_PER_FINAL) notices.push(`${ev.name || "Event"}: A total ${sumA} (>8)`);
+      if(sumB > SLOTS_PER_FINAL) notices.push(`${ev.name || "Event"}: B total ${sumB} (>8)`);
+      if(sumC > SLOTS_PER_FINAL) notices.push(`${ev.name || "Event"}: C total ${sumC} (>8)`);
+    }
+
+    lastMeetTotals = meet;
+    lastMeetTotals._prelimUsedAny = prelimUsedAny;
+    lastOptimizedTotals = null;
+
+    warnEl.textContent = notices.length ? ("Notice: " + notices.join(" • ")) : "";
+
+    renderResultsTable();
+    renderKPIs();
+  }
+
+  function optimizeTeam(){
+    saveActiveEvent();
+    ensureEvents();
+    const focus = optTeamEl.value;
+
+    const opt = optimizedMeetTotals(focus);
+    lastOptimizedTotals = { focusTeam: focus, totals: opt.totals };
+
+    warnEl.textContent = opt.warnings.length
+      ? ("Warning: " + opt.warnings.join(" • ") + ". Optimized mode caps at 8 scoring slots per final.")
+      : "";
+
+    renderResultsTable();
+    renderKPIs();
+  }
+
+  function renderKPIs(){
+    const focus = (lastOptimizedTotals?.focusTeam) || (optTeamEl.value) || (teams[0] || "");
+    const meetRow = lastMeetTotals?.[focus];
+    const optPts = lastOptimizedTotals?.totals?.[focus];
+    const prelimAny = !!lastMeetTotals?._prelimUsedAny;
+
+    kpisEl.innerHTML = "";
+    const boxes = [
+      { label: "Events stacked", value: String(events.length) },
+      { label: `${focus} — Prelims-as-finals`, value: (meetRow && prelimAny) ? fmt(meetRow.prelim) : "—" },
+      { label: `${focus} — Expected`, value: meetRow ? fmt(meetRow.exp) : "—" },
+      { label: `${focus} — Max`, value: meetRow ? fmt(meetRow.max) : "—" },
+      { label: `${focus} — Min`, value: meetRow ? fmt(meetRow.min) : "—" },
+      { label: `${focus} — Optimized`, value: (optPts != null ? fmt(optPts) : "—") },
+    ];
+
+    for(const b of boxes){
+      const div = document.createElement("div");
+      div.className = "box";
+      div.innerHTML = `<div class="label">${esc(b.label)}</div><div class="value">${esc(b.value)}</div>`;
+      kpisEl.appendChild(div);
+    }
+  }
+
+  function renderResultsTable(){
+    const prelimAny = !!lastMeetTotals?._prelimUsedAny;
+
+    const rows = teams.map(t => {
+      const base = lastMeetTotals?.[t] || {prelim:0, exp:0,max:0,min:0};
+      const opt = lastOptimizedTotals?.totals?.[t];
+      return { team:t, prelim:base.prelim, exp:base.exp, max:base.max, min:base.min, opt:(opt != null ? opt : null) };
+    }).sort((a,b) => {
+      const aKey = prelimAny ? a.prelim : a.exp;
+      const bKey = prelimAny ? b.prelim : b.exp;
+      return (bKey - aKey) || a.team.localeCompare(b.team);
+    });
+
+    let html = `
+      <table>
+        <thead>
+          <tr>
+            <th>Team</th>
+            <th class="num">Prelims-as-finals</th>
+            <th class="num">Expected</th>
+            <th class="num">Max</th>
+            <th class="num">Min</th>
+            <th class="num">Optimized</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    for(const r of rows){
+      html += `
+        <tr>
+          <td>${esc(r.team)}</td>
+          <td class="num">${prelimAny ? fmt(r.prelim) : "—"}</td>
+          <td class="num">${fmt(r.exp)}</td>
+          <td class="num">${fmt(r.max)}</td>
+          <td class="num">${fmt(r.min)}</td>
+          <td class="num">${r.opt == null ? "—" : fmt(r.opt)}</td>
+        </tr>
+      `;
+    }
+    html += "</tbody></table>";
+    resultsTableEl.innerHTML = html;
+  }
+
+  function renderAll(){
+    ensureEvents();
+    renderTeams();
+    renderEventEditor();
+    lastMeetTotals = null;
+    lastOptimizedTotals = null;
+    resultsTableEl.innerHTML = '<div class="muted">Paste placings → Auto-fill → Calculate meet totals.</div>';
+    kpisEl.innerHTML = "";
+    warnEl.textContent = "";
+  }
+
+  document.getElementById("themeBtn").addEventListener("click", () => {
+    const cur = document.body.getAttribute("data-theme");
+    document.body.setAttribute("data-theme", cur === "dark" ? "" : "dark");
+  });
+
+  document.getElementById("addTeamBtn").addEventListener("click", addTeam);
+  document.getElementById("resetTeamsBtn").addEventListener("click", resetTeams);
+  document.getElementById("addEventBtn").addEventListener("click", addEvent);
+  document.getElementById("removeEventBtn").addEventListener("click", removeEvent);
+  document.getElementById("calcBtn").addEventListener("click", calculateMeetTotals);
+  document.getElementById("optBtn").addEventListener("click", optimizeTeam);
+  autofillBtn.addEventListener("click", autofillFromPlacingsForActiveEvent);
+
+  // Auto-fill also runs whenever you leave the textbox (blur), for convenience
+  prelimTextEl.addEventListener("blur", () => {
+    // Only run if there's content; don't spam warnings
+    const txt = prelimTextEl.value.trim();
+    if(!txt) return;
+    try{
+      autofillFromPlacingsForActiveEvent();
+    } catch(_){}
+  });
+
+  renderAll();
+</script>
+</body>
+</html>
